@@ -1,0 +1,6 @@
+Create bg.png and bg-blur.png:
+rm bg.png bg-orig.png bg-blur.png -f
+ffmpeg -i bg-orig.mp4 -vf scale=1366:768 bg.mp4
+ffmpeg -i bg-orig.mp4 -frames:v 1 bg-orig.png
+convert bg-orig.png -resize 1366x768 -quality 100 bg.png
+convert bg.png -gaussian-blur 30x15 -fill black -colorize 84% bg-blur.png
