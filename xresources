@@ -10,6 +10,8 @@ URxvt.bolditalicFont: xft:JetBrains Mono:style=Bold Italic:size=9
 URxvt*foreground: #d6d6d6
 URxvt*background: #191b1f
 URxvt.borderColor: #191b1f
+URxvt*transparent: true
+URxvt*shading: 100
 
 URxvt*color0: #191b1f
 URxvt*color1: #cd3f45
