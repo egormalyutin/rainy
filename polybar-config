@@ -1,6 +1,6 @@
 [colors]
 background = #00000000
-background-alt = #444
+background-alt = #2e3133
 foreground = #dfdfdf
 foreground-alt = #555
 primary = #ffb52a
@@ -21,22 +21,71 @@ override-redirect = true
 background = ${colors.background}
 foreground = ${colors.foreground}
 
-module-margin-left = 2
-module-margin-right = 2
+padding-left = 1
+padding-right = 1
 
-font-0 = JetBrains Mono:pixelsize=10;1
+module-margin-left = 0
+module-margin-right = 0
 
-modules-left = xworkspaces
-; modules-center = ""
-; modules-right = ""
+font-0 = JetBrains Mono:pixelsize=10;2
+font-1 = DejaVu Sans:pixelsize=10;3
+
+modules-left = hex workspaces-xmonad
+modules-center = cmus-title cmus-button
+modules-right = battery volume date
 
 cursor-click = pointer
 cursor-scroll = ns-resize
 
-[module/xworkspaces]
-type = internal/xworkspaces
-enable-click = false
-enable-scroll = false
+[module/hex]
+type = custom/text
+content = "⬢ "
+content-foreground = #a074c4
+
+[module/workspaces-xmonad]
+type = custom/script
+exec = tail -F /tmp/xmonad-workspace-log
+tail = true
+
+[module/cmus-title]
+type = custom/script
+
+exec = "cmus-remote -C status 2>&1 | grep -P "^tag title" | sed -z -e 's/tag title//' && echo"
+
+interval = 0.5
+
+[module/cmus-button]
+type = custom/script
+
+exec = "cmus-remote -C status 2>&1 | grep -P "^status" | sed -e 's/status playing/ ▮▮/' -e 's/status paused/ ▶/' -e 's/\ntag title / - /' -e 's/^status stopped//' && echo"
+
+click-left = cmus-remote --pause
+
+interval = 0.5
+
+[module/battery]
+type = internal/battery
+full-at = 97
+poll-interval = 1
+
+label-charging = %{F#41535b}chr%{F-} %percentage%%
+label-full  = %{F#41535b}full%{F-}
+label-discharging = %{F#41535b}dchr%{F-} %percentage%%
+
+[module/volume]
+type = internal/alsa
+interval = 0.5
+
+label-volume = %{F#41535b} / vol%{F-} %percentage%%
+label-muted = %{F#41535b} / mut%{F-} %percentage%%
+
+[module/date]
+type = internal/date
+
+date = %m-%d
+time = %H:%M
+
+label = %{F#41535b} / date%{F-} %date% %time%
 
 [settings]
 screenchange-reload = true

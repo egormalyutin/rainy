@@ -15,31 +15,41 @@ import XMonad.Hooks.InsertPosition
 import Graphics.X11.ExtraTypes.XF86
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.EwmhDesktops
+import Data.List (sortBy)
+import Data.Function (on)
+import Control.Monad (forM_, join)
+import XMonad.Util.Run (safeSpawn)
+import qualified XMonad.StackSet as W
 
 startup :: X ()
 startup = do
+    spawn "killall picom xwinwrap polybar feh"
+
+    spawn "rm /tmp/xmonad-workspace-log"
+    spawn "sleep 0.3 && mkfifo /tmp/xmonad-workspace-log"
+
     -- urxvt config
-    spawn "xrdb -load ~/rainy/xresources"
+    spawn "sleep 0.3 && xrdb -load ~/rainy/xresources"
 
     -- composite manager
-    spawn "picom --config ~/rainy/compton.conf"
+    spawn "sleep 0.3 && picom --config ~/rainy/compton.conf"
 
     -- image wallpaper
-    spawn "feh --bg-scale ~/rainy/bg-blur.png"
+    spawn "sleep 0.3 && feh --bg-scale ~/rainy/bg-blur.png"
 
     -- live wallpaper
-    spawn $ "xwinwrap -ni -fdt -sh rectangle -un -b -nf -ovr -fs -- mpv" ++
-            " --wid WID --no-config --keepaspect=no --loop --no-border" ++
-            " --vd-lavc-fast --x11-bypass-compositor=no" ++
+    spawn $ "sleep 0.3 && xwinwrap -ni -fdt -sh rectangle -un -b -nf -ovr" ++ 
+            " -fs -- mpv --wid WID --no-config --keepaspect=no --loop" ++
+            " --no-border --vd-lavc-fast --x11-bypass-compositor=no" ++
             " --gapless-audio=yes --aid=no --vo=xv --hwdec=auto" ++
             " --really-quiet --pause" ++
             " --input-ipc-server=/tmp/mpv-bg-socket ~/rainy/bg.mp4"
 
     -- default pointer
-    spawn "xsetroot -cursor_name left_ptr"
+    spawn "sleep 0.3 && xsetroot -cursor_name left_ptr"
 
     -- bar
-    spawn "polybar -r -c ~/rainy/polybar-config bar"
+    spawn "sleep 0.3 && polybar -r -c ~/rainy/polybar-config bar"
 
 gap :: Int
 gap = 6
@@ -51,20 +61,26 @@ applyGaps = gaps $ zip [U, D, R, L] $ repeat gap
 
 layout = avoidStruts (applyGaps mrt)
          ||| avoidStruts (applyGaps mrt { isMirrored = True })
+         ||| avoidStruts (applyGaps Full)
          ||| Full
 
 reload :: X ()
 reload = spawn $ "if type xmonad; then xmonad --recompile" ++
     " && xmonad --restart; else xmessage xmonad not in \\$PATH: \"$PATH\"; fi"
 
+lWorkspaces = ["base", "www", "chaos"]
+rWorkspaces = ["music"]
+cWorkspaces = show <$> [length lWorkspaces + 1.. 9 - length rWorkspaces]
+
 myWorkspaces :: [String]
-myWorkspaces = ["base", "www"] ++ (show <$> [3..9]) ++ ["music"]
+myWorkspaces = lWorkspaces ++ cWorkspaces ++ rWorkspaces
 
 myKeys :: XConfig Layout -> M.Map (KeyMask, KeySym) (X ())
 myKeys conf = M.fromList $
     [ ((modm,               xK_Return), spawn $ terminal conf)
     , ((modm,               xK_d     ), spawn "~/rainy/dmenu.sh")
     , ((modm .|. shiftMask, xK_b     ), spawn "chromium")
+    , ((modm .|. shiftMask, xK_c     ), spawn "~/rainy/bg-toggle.sh")
 
     , ((modm .|. shiftMask, xK_q     ), kill)
 
@@ -92,6 +108,9 @@ myKeys conf = M.fromList $
     , ((0, xF86XK_AudioLowerVolume   ), spawn "amixer -q sset Master 2%-")
     , ((0, xF86XK_AudioRaiseVolume   ), spawn "amixer -q sset Master 2%+")
     , ((0, xF86XK_AudioMute          ), spawn "amixer set Master toggle")
+
+    , ((0, xF86XK_MonBrightnessDown  ), spawn "xbacklight -20%")
+    , ((0, xF86XK_MonBrightnessUp    ), spawn "xbacklight +20%")
     ]
     ++
     [((modm .|. m, k), windows $ f i)
@@ -99,6 +118,44 @@ myKeys conf = M.fromList $
         , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]]
 
     where modm = modMask conf
+
+
+isEmpty ws tg = any (\w -> (W.tag w == tg) && (W.stack w == Nothing)) ws
+
+lFmt curr ws tg | curr == tg    = "%{B#2e3133} " ++ tg ++ " %{B-} "
+                | otherwise     = tg ++ " "
+
+cFmt curr ws tg | curr == tg    = "%{B#2e3133} " ++ tg ++ " %{B-} "
+                | isEmpty ws tg = ""
+                | otherwise     = tg ++ " "
+
+rFmt curr ws tg | curr == tg && isEmpty ws tg =
+                    "%{B#2e3133}%{F#41535b} " ++ tg ++ " %{B-}%{F-} "
+
+                | curr == tg =
+                    "%{B#2e3133}%{F#55b5db} " ++ tg ++ " %{B-}%{F-} "
+
+                | isEmpty ws tg =
+                    "%{F#41535b}" ++ tg ++ "%{F-} "
+
+                | otherwise =
+                    "%{F#55b5db}" ++ tg ++ "%{F-} "
+
+eventLogHook = do
+    winset <- gets windowset
+    let curr = W.currentTag winset
+    let ws = W.workspaces winset
+
+    let lWsStr = join $ map (lFmt curr ws) lWorkspaces
+    let cWsStr = join $ map (cFmt curr ws) cWorkspaces
+    let rWsStr = join $ map (rFmt curr ws) rWorkspaces
+
+    let wsStr = if cWsStr /= ""
+                    then lWsStr ++ "%{F#41535b}/%{F-} "
+                          ++ cWsStr ++ "%{F#41535b}/%{F-} " ++ rWsStr
+                    else lWsStr ++ rWsStr
+
+    io $ appendFile "/tmp/xmonad-workspace-log" (wsStr ++ "\n")
 
 main :: IO ()
 main = do
@@ -111,5 +168,6 @@ main = do
         , keys = myKeys
         , workspaces = myWorkspaces
         , manageHook = insertPosition Below Newer
+        , logHook = eventLogHook
         , handleEventHook = handleEventHook def <+> fullscreenEventHook
         }
