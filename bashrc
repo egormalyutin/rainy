@@ -22,3 +22,8 @@ bind '"\eOB": history-search-forward'
 
 shopt -s histappend
 PROMPT_COMMAND="history -a;$PROMPT_COMMAND"
+
+HISTSIZE=-1
+HISTFILESIZE=-1
+
+source ~/bashrc-2

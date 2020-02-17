@@ -39,7 +39,7 @@ startup = do
 
     -- live wallpaper
     spawn $ "sleep 0.3 && xwinwrap -ni -fdt -sh rectangle -un -b -nf -ovr" ++ 
-            " -fs -- mpv --wid WID --no-config --keepaspect=no --loop" ++
+            " -fs -- mpv -wid WID --no-config --keepaspect=no --loop" ++
             " --no-border --vd-lavc-fast --x11-bypass-compositor=no" ++
             " --gapless-audio=yes --aid=no --vo=xv --hwdec=auto" ++
             " --really-quiet --pause" ++
